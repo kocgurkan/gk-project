@@ -1,0 +1,135 @@
+version: '2'
+# dockercompose bircok kontaineri ayni anda ayagakaldirmak icin kullanilir. 
+# version=2 cunku version3 de memory limit ayarlari degismis.
+services:
+# services = servers
+  config-server:
+  # server adi
+    image: petclinic-config-server:dev
+    # bizim olusturdugumuz imag'in adi
+    container_name: config-server
+    # container'a verdigimiz isim
+    mem_limit: 512M
+    ports: 
+      - 8888:8888
+      # ilk 8888 bilgisayar portu ikincisi containera ait
+      # portlari developerlar soyluyor
+    # cli'da nasil imagi'i container yapiyorduk = docker run -p 8888:8888 --name config-server --memory 512 petclinic-config-server:dev
+    # docker run --help
+
+  discovery-server:
+    image: petclinic-discovery-server:dev
+    container_name: discovery-server
+    mem_limit: 512M
+    ports: 
+      - 8761:8761
+    depends_on: 
+      - config-server
+      # discovery-server, config-server'in ayaga kalkmasini bekler ve sonra ayaga kalkar
+      # cunku butun configuration ayarlari config-server'da 
+    entrypoint: ["./dockerize", "-wait=tcp://config-server:8888", "-timeout=160s", "--", "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+    # config-server'in hazir olup olmadigini "DOCKERIZE" ile anliyoruz. 
+    # "./dockerize", "-wait=tcp://config-server:8888 = config-server container'i kontrol et, hazir degilse bekle
+    # "--" = iki komudu ayirir.
+    # eger server calisdiysa iknci kodu calsitirir.
+    # "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar" = bir java komudu. java kodunu (app.jar) calistiriyor "-jar","/app.jar"
+  customers-service:
+    image: petclinic-customers-service:dev
+    container_name: customers-service
+    mem_limit: 512M
+    ports:
+     - 8081:8081
+    depends_on: 
+     - config-server
+     - discovery-server
+    entrypoint: ["./dockerize", "-wait=tcp://discovery-server:8761", "-timeout=160s", "--", "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar" ]
+  
+  visits-service:
+    image: petclinic-visits-service:dev
+    container_name: visits-service
+    mem_limit: 512M
+    ports:
+     - 8082:8082
+    depends_on: 
+     - config-server
+     - discovery-server
+    entrypoint: ["./dockerize", "-wait=tcp://discovery-server:8761", "-timeout=160s", "--", "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar" ]
+  
+  vets-service:
+    image: petclinic-vets-service:dev
+    container_name: vets-service
+    mem_limit: 512M
+    ports:
+     - 8083:8083
+    depends_on: 
+     - config-server
+     - discovery-server
+    entrypoint: ["./dockerize", "-wait=tcp://discovery-server:8761", "-timeout=160s", "--", "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar" ]
+  
+  api-gateway:
+    image: petclinic-api-gateway:dev
+    container_name: api-gateway
+    mem_limit: 512M
+    ports:
+     - 8080:8080
+    depends_on: 
+     - config-server
+     - discovery-server
+    entrypoint: ["./dockerize", "-wait=tcp://discovery-server:8761", "-timeout=160s", "--", "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar" ]
+  
+  admin-server:
+    image: petclinic-admin-server:dev
+    container_name: admin-server
+    mem_limit: 512M
+    ports:
+     - 9090:9090
+    depends_on: 
+     - config-server
+     - discovery-server
+    entrypoint: ["./dockerize", "-wait=tcp://discovery-server:8761", "-timeout=160s", "--", "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar" ]
+
+  hystrix-dashboard:
+    image: petclinic-hystrix-dashboard:dev
+    container_name: hystrix-dashboard
+    mem_limit: 512M
+    ports:
+     - 7979:7979
+    depends_on: 
+     - config-server
+     - discovery-server
+    entrypoint: ["./dockerize", "-wait=tcp://discovery-server:8761", "-timeout=160s", "--", "java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar" ]
+
+  tracing-server:
+  # sigorta gibi calisiyor fazla yuklenme oldugunda sigorta atiyor ve artik ilgili servera istek gitmesini onluyor.
+    image: openzipkin/zipkin
+    container_name: tracing-server
+    mem_limit: 512M
+    environment:
+    - JAVA_OPTS=-XX:+UnlockExperimentalVMOptions -Djava.security.egd=file:/dev/./urandom
+    # memory limiti java 8 ve 9 da calismiyormus. yukaridaki code ile cozulmus mesele.
+    ports:
+     - 9411:9411 
+  
+  grafana-server:
+    image: petclinic-grafana-server:dev
+    container_name: grafana-server
+    mem_limit: 256M
+    ports:
+    - 3000:3000
+
+  prometheus-server:
+    image: petclinic-prometheus-server:dev
+    container_name: prometheus-server
+    mem_limit: 256M
+    ports:
+    - 9091:9090
+
+  mysql-server:
+    image: mysql:5.7.8
+    container_name: mysql-server
+    environment: 
+      MYSQL_ROOT_PASSWORD: petclinic
+      MYSQL_DATABASE: petclinic
+    mem_limit: 256M
+    ports:
+    - 3306:3306
