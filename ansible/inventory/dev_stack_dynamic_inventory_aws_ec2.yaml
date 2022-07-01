@@ -4,11 +4,11 @@ regions:
 filters: #filtrelerken tags bakiyor
   tag:Project: tera-kube-ans # main.tf de master makinesindeki tag'ler bunlar
   tag:environment: dev # main.tf de master makinesindeki tag'ler bunlar
-keyed_groups:
-  - key: tags['Project']
-    prefix: 'all_instances'
-  - key: tags['Role']
-    prefix: 'role'
+keyed_groups: # gruplama cesitleri
+  - key: tags['Project'] # main.tf'de tags altinda proje diye tag vermisiz projet adida "tera-kube-ans" olarak verilmis bu projede calisan tum makineler demek. 3 tane var bizde. master ve 2 worker.
+    prefix: 'all_instances' # burda yukaridaki region'da calisan tum makineleri grupluyor.
+  - key: tags['Role'] # main.tf'de tags de "role" vardi orda bazi makineler worker ve master. role gore grupluyor. yani tum workerlar ve masterlar diye iki tane var bizde.
+    prefix: 'role' 
 hostnames:
   - "ip-address"
 compose:
